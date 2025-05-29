@@ -22,7 +22,7 @@ ENV DOCKER_HOST=tcp://localhost:2375
 RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
 
 COPY --from=docker:dind /usr/local/bin/ /usr/local/bin/
-
+COPY --from=docker:dind /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 # VOLUME /var/lib/docker
 
 ENTRYPOINT ["dockerd-entrypoint.sh"]

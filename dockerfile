@@ -77,7 +77,19 @@ RUN wget -O- https://apt.releases.hashicorp.com/gpg | \
 	rm -rf /var/lib/apt/lists/*
 
 ####################################
+# SSH instal
+####################################
+
+COPY container_sshd.sh /usr/local/bin/container_sshd.sh
+RUN chmod +x /usr/local/bin/container_sshd.sh && \
+	USERNAME=root \
+	NEW_PASSWORD=admin \
+	SSHD_PORT=22 \
+	/usr/local/bin/container_sshd.sh
+
+####################################
 # Final setup
 ####################################
-ENTRYPOINT ["dockerd-entrypoint.sh"]
-CMD []
+COPY entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]

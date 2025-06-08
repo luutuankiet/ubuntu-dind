@@ -24,6 +24,40 @@ RUN set -eux; \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
+####################################
+# Docker installation
+####################################
+ENV DOCKER_TLS_CERTDIR=/certs
+RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
+
+COPY --from=docker:dind /usr/local/bin/ /usr/local/bin/
+COPY --from=docker:dind /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+
+VOLUME /var/lib/docker
+
+
+####################################
+# uv installation
+####################################
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+####################################
+# SSH installation
+####################################
+
+COPY container_sshd.sh /usr/local/bin/container_sshd.sh
+RUN chmod +x /usr/local/bin/container_sshd.sh && \
+	USERNAME=root \
+	NEW_PASSWORD=admin \
+	SSHD_PORT=22 \
+	/usr/local/bin/container_sshd.sh
+
+####################################
+# Final setup
+####################################
+COPY entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
 
 FROM base AS full 
 	
@@ -67,37 +101,3 @@ RUN wget -O- https://apt.releases.hashicorp.com/gpg | \
 
 FROM base AS slim
 
-####################################
-# Docker installation
-####################################
-ENV DOCKER_TLS_CERTDIR=/certs
-RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
-
-COPY --from=docker:dind /usr/local/bin/ /usr/local/bin/
-COPY --from=docker:dind /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
-
-VOLUME /var/lib/docker
-
-
-####################################
-# uv installation
-####################################
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-####################################
-# SSH installation
-####################################
-
-COPY container_sshd.sh /usr/local/bin/container_sshd.sh
-RUN chmod +x /usr/local/bin/container_sshd.sh && \
-	USERNAME=root \
-	NEW_PASSWORD=admin \
-	SSHD_PORT=22 \
-	/usr/local/bin/container_sshd.sh
-
-####################################
-# Final setup
-####################################
-COPY entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]

@@ -9,7 +9,7 @@ env:
     RELEASE: ${{ secrets.DOCKERHUB_USER }}/${{ vars.IMAGE_NAME }}
 
 jobs:
-  deploy_docker:
+  docker_CICD:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,7 +17,7 @@ jobs:
         include:
           - variant: full
             target: full
-            tag: lates
+            tag: latest
           - variant: slim
             target: slim
             tag: slim
@@ -34,6 +34,11 @@ jobs:
 
       - name: Build Docker image
         run: docker build --target ${{ matrix.target }} -t ${{ env.RELEASE }}:${{ matrix.tag }} .
+
+      - name: Test Docker image
+        run: |
+          chmod +x ./tests/container_services.sh
+          ./tests/container_services.sh "${{ env.RELEASE }}:${{ matrix.tag }}" "${{ matrix.variant }}"
 
       - name: Push image to Docker Hub
         run: docker push ${{ env.RELEASE }}:${{ matrix.tag }}

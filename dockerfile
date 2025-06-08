@@ -52,9 +52,9 @@ COPY container_sshd.sh /usr/local/bin/container_sshd.sh
 RUN bash <<EOF
 #!/bin/bash
 
-USERNAME=root
-NEW_PASSWORD=admin
-SSHD_PORT=22
+export USERNAME=root
+export NEW_PASSWORD=admin
+export SSHD_PORT=22
 
 chmod +x /usr/local/bin/container_sshd.sh
 /usr/local/bin/container_sshd.sh

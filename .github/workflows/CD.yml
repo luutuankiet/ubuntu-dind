@@ -6,11 +6,21 @@ on:
   workflow_dispatch:
 
 env:
-    IMAGE_NAME: 'ubuntu-dind'
+    RELEASE: ${{ secrets.DOCKERHUB_USER }}/${{ vars.IMAGE_NAME }}
 
 jobs:
-  docker:
+  deploy_docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [full,slim]
+        include:
+          - variant: full
+            target: full
+            tag: lates
+          - variant: slim
+            target: slim
+            tag: slim
 
     steps:
       - name: Checkout code
@@ -23,7 +33,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USER }}/${{ env.IMAGE_NAME }}:latest .
+        run: docker build --target ${{ matrix.target }} -t ${{ env.RELEASE }}:${{ matrix.tag }} .
 
       - name: Push image to Docker Hub
-        run: docker push ${{ secrets.DOCKERHUB_USER }}/${{ env.IMAGE_NAME }}:latest
+        run: docker push ${{ env.RELEASE }}:${{ matrix.tag }}

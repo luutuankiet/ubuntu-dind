@@ -1,6 +1,6 @@
 # https://github.com/docker-library/docker/issues/306#issuecomment-815338333
 
-FROM ubuntu:latest
+FROM ubuntu:latest AS base
 
 # Base system setup + shared dependencies
 RUN set -eux; \
@@ -23,22 +23,9 @@ RUN set -eux; \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
-####################################
-# Docker installation
-####################################
-ENV DOCKER_TLS_CERTDIR=/certs
-RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
 
-COPY --from=docker:dind /usr/local/bin/ /usr/local/bin/
-COPY --from=docker:dind /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
-
-VOLUME /var/lib/docker
-
-####################################
-# uv installation
-####################################
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
+FROM base AS full 
+	
 ####################################
 # Google Cloud CLI installation
 ####################################
@@ -76,8 +63,28 @@ RUN wget -O- https://apt.releases.hashicorp.com/gpg | \
 	apt-get install -y terraform && \
 	rm -rf /var/lib/apt/lists/*
 
+
+FROM base AS slim
+
 ####################################
-# SSH instal
+# Docker installation
+####################################
+ENV DOCKER_TLS_CERTDIR=/certs
+RUN mkdir /certs /certs/client && chmod 1777 /certs /certs/client
+
+COPY --from=docker:dind /usr/local/bin/ /usr/local/bin/
+COPY --from=docker:dind /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+
+VOLUME /var/lib/docker
+
+
+####################################
+# uv installation
+####################################
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+####################################
+# SSH installation
 ####################################
 
 COPY container_sshd.sh /usr/local/bin/container_sshd.sh

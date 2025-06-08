@@ -3,26 +3,29 @@
 FROM ubuntu:latest AS base
 
 # Base system setup + shared dependencies
-RUN set -eux; \
-	apt-get update; \
-	apt-get install -y --no-install-recommends \
-		ca-certificates \
-		sshpass \
-		iptables \
-		openssl \
-		pigz \
-		xz-utils \
-		curl \
-		wget \
-		lsb-release \
-		gnupg \
-		python3 \
-		git \
-		tmux \
-		zsh \
-		zsh-autosuggestions \
-	; \
-	rm -rf /var/lib/apt/lists/*
+RUN <<EOF
+
+set -eux
+apt-get update
+apt-get install -y --no-install-recommends \
+	ca-certificates \
+	sshpass \
+	iptables \
+	openssl \
+	pigz \
+	xz-utils \
+	curl \
+	wget \
+	lsb-release \
+	gnupg \
+	python3 \
+	git \
+	tmux \
+	zsh \
+	zsh-autosuggestions
+rm -rf /var/lib/apt/lists/*
+
+EOF
 
 ####################################
 # Docker installation
@@ -46,11 +49,100 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ####################################
 
 COPY container_sshd.sh /usr/local/bin/container_sshd.sh
-RUN chmod +x /usr/local/bin/container_sshd.sh && \
-	USERNAME=root \
-	NEW_PASSWORD=admin \
-	SSHD_PORT=22 \
-	/usr/local/bin/container_sshd.sh
+RUN bash <<EOF
+#!/bin/bash
+
+USERNAME=root
+NEW_PASSWORD=admin
+SSHD_PORT=22
+
+chmod +x /usr/local/bin/container_sshd.sh
+/usr/local/bin/container_sshd.sh
+
+EOF
+
+####################################
+# Define Installation Scripts
+####################################
+
+# install-gcloud script
+RUN <<EOF
+cat > /usr/local/bin/install-gcloud << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+echo "Installing Google Cloud CLI..."
+
+if command -v gcloud >/dev/null 2>&1; then
+    echo "Google Cloud CLI already installed"
+    exit 0
+fi
+
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+    > /etc/apt/sources.list.d/google-cloud-sdk.list && \
+apt-get update && \
+apt-get install -y google-cloud-cli
+
+echo "✅ Google Cloud CLI installed"
+gcloud version
+SCRIPT
+EOF
+
+# install-node script
+RUN <<EOF
+cat > /usr/local/bin/install-node << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+echo "Installing Node..."
+
+if command -v node >/dev/null 2>&1; then
+    echo "Node already installed"
+    exit 0
+fi
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+nvm install 22
+
+echo "✅ Node installed"
+node --version
+SCRIPT
+EOF
+
+# install-terraform script
+RUN <<EOF
+cat > /usr/local/bin/install-terraform << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+echo "Installing Terraform..."
+
+if command -v terraform >/dev/null 2>&1; then
+    echo "Terraform already installed"
+    exit 0
+fi
+
+wget -O- https://apt.releases.hashicorp.com/gpg | \
+    gpg --dearmor | \
+    tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+    https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+    tee /etc/apt/sources.list.d/hashicorp.list
+apt-get update
+apt-get install -y terraform
+
+echo "✅ Terraform installed"
+terraform version
+SCRIPT
+EOF
+
+# Make scripts executable in the base stage
+RUN chmod +x /usr/local/bin/install-*
 
 ####################################
 # Final setup
@@ -59,45 +151,18 @@ COPY entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
 
-FROM base AS full 
-	
-####################################
-# Google Cloud CLI installation
-####################################
-RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-	| gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
-	echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
-	> /etc/apt/sources.list.d/google-cloud-sdk.list && \
-	apt-get update && \
-	apt-get install -y google-cloud-cli && \
-	rm -rf /var/lib/apt/lists/*
 
 ####################################
-# Node.js (nvm) installation
+# Full variant
 ####################################
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
-	export NVM_DIR="$HOME/.nvm" && \
-	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && \
-	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" && \
-	nvm install 22
-	# nvm install 22 && \
-	# echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc && \
-	# echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc && \
-	# echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> ~/.zshrc
+FROM base AS full
 
-####################################
-# Terraform installation
-####################################
-RUN wget -O- https://apt.releases.hashicorp.com/gpg | \
-	gpg --dearmor | \
-	tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null && \
-	echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
-		https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
-	tee /etc/apt/sources.list.d/hashicorp.list && \
-	apt-get update && \
-	apt-get install -y terraform && \
-	rm -rf /var/lib/apt/lists/*
+# Execute the installation scripts that are already present from the base image
+RUN find /usr/local/bin -name 'install-*' -type f -executable | \
+	xargs -r -I{} bash -c '{}'
 
 
+####################################
+# Slim variant
+####################################
 FROM base AS slim
-

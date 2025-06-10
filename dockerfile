@@ -17,6 +17,7 @@ apt-get install -y --no-install-recommends \
 	sudo \
 	curl \
 	wget \
+	vim \
 	lsb-release \
 	gnupg \
 	python3 \
@@ -65,6 +66,26 @@ EOF
 ####################################
 # Define Installation Scripts
 ####################################
+
+# install-sudo
+RUN <<EOF
+cat > /usr/local/bin/install-sudo << 'SCRIPT'
+#!/bin/bash
+# --- Configuration ---
+DEFAULT_USER="dev"
+DEFAULT_PASSWORD="admin" # WARNING: Hardcoded password - not for production!
+SUDO_GROUP="sudo"
+DEFAULT_SHELL="/bin/bash"
+# ---------------------
+TARGET_UID="$1"
+TARGET_GID="$2"
+TARGET_USER="$DEFAULT_USER"
+useradd -u "$TARGET_UID" -g "$TARGET_GID" -m -s "$DEFAULT_SHELL" "$TARGET_USER"
+echo "$TARGET_USER:$DEFAULT_PASSWORD" | chpasswd
+adduser "$TARGET_USER" "$SUDO_GROUP"
+exit 0
+SCRIPT
+EOF
 
 # install-gcloud script
 RUN <<EOF

@@ -14,6 +14,7 @@ apt-get install -y --no-install-recommends \
 	openssl \
 	pigz \
 	xz-utils \
+	sudo \
 	curl \
 	wget \
 	lsb-release \

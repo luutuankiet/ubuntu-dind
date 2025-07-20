@@ -23,6 +23,9 @@ while ! docker info >/dev/null 2>&1; do
     sleep 2
 done
 echo "Docker daemon ready!"
+chown ubuntu /var/run/docker.sock
+echo "Enabled docker feats for user ubuntu."
+
 
 # Handle additional commands
 if [ $# -gt 0 ]; then

@@ -128,6 +128,7 @@ node --version
 
 echo "installing playwright deps"
 npx playwright install --with-deps chromium
+npx playwright install chrome
 
 SCRIPT
 EOF

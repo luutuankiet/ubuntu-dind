@@ -25,6 +25,20 @@ apt-get install -y --no-install-recommends \
 	tmux \
 	zsh \
 	zsh-autosuggestions
+
+# packages for headless chrome i.e. roocode's web_fetch to work
+apt-get install -y \
+    libatk1.0-0t64 \
+    libatk-bridge2.0-0t64 \
+    libgtk-3-0t64 \
+    libnss3 \
+    libxss1 \
+    libasound2t64 \
+    libgbm-dev \
+    libu2f-udev \
+    libvulkan1 \
+    --no-install-recommends
+
 rm -rf /var/lib/apt/lists/*
 
 EOF

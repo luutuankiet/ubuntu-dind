@@ -1,7 +1,6 @@
 # https://github.com/docker-library/docker/issues/306#issuecomment-815338333
 
-# FROM ubuntu:latest AS base
-FROM mcr.microsoft.com/playwright/python:v1.50.0-noble AS base
+FROM ubuntu:latest AS base
 
 # Base system setup + shared dependencies
 RUN <<EOF
@@ -126,6 +125,10 @@ nvm install 22
 
 echo "✅ Node installed"
 node --version
+
+echo "installing playwright deps"
+npx playwright install --with-deps chromium
+
 SCRIPT
 EOF
 
